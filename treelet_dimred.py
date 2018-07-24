@@ -1,9 +1,10 @@
 import numpy as np
 from scipy.sparse import coo_matrix
+
 from treelet import treelet
 
 
-class treelet_dimred (treelet):
+class treelet_dimred(treelet):
 	def __init__ (self, t=0):
 		super().__init__()
 		self.t = t
@@ -28,20 +29,18 @@ class treelet_dimred (treelet):
 			v[:, scv] = temp_scv
 			v[:, cgs] = temp_cgs
 		if epsilon == 0:
-			return (v, None)
+			return v, None
 		else:
 			scaling_part = np.concatenate([v[:, self.dfrk[i]] for i in range(k, self.n)], axis=1)
 			difference_part = np.concatenate([v[:, self.dfrk[i]] for i in range(k)], axis=1)
 			difference_mat = coo_matrix(abs(difference_part) > epsilon).multiply(difference_part)
 			return scaling_part, difference_mat
 
-	def inverse_transform (self, scaling_part, difference_mat=False):
+	def inverse_transform (self, scaling_part, difference_matrix=False):
 		scaling_part = np.matrix(scaling_part)
-		rows = scaling_part.shape[0]
-		cols = self.n
-		k = cols - scaling_part.shape[1]
-		v = np.matrix(np.zeros((rows, cols)))
-		for i in range(k, cols):
+		k = self.n - scaling_part.shape[1]
+		v = np.matrix(np.zeros((scaling_part.shape[0], self.n)))
+		for i in range(k, self.n):
 			v[:, self.dfrk[i]] = scaling_part[:, i]
 		for iter in reversed(self.transform_list):
 			(scv, cgs, cos_val, sin_val) = iter
@@ -49,16 +48,16 @@ class treelet_dimred (treelet):
 			temp_cgs = -sin_val * v[:, scv] + cos_val * v[:, cgs]
 			v[:, scv] = temp_scv
 			v[:, cgs] = temp_cgs
-		if difference_mat:
+		if difference_matrix:
 			for i in range(k):
-				v[:, self.dfrk[i]] += difference_mat[:, i]
+				v[:, self.dfrk[i]] += difference_matrix[:, i]
 		return v + self.mean_
 
 	def cluster (self, k):
-		returnL = list(range(self.n))
+		clust_list = list(range(self.n))
 		for i in range(self.n - k, -1, -1):
-			returnL[self.transform_list[i][1]] = returnL[self.transform_list[i][0]]
-		return returnL
+			clust_list[self.transform_list[i][1]] = clust_list[self.transform_list[i][0]]
+		return clust_list
 
 	def components_ (self, k):
 		return self.transform(np.identity(self.n) + self.mean_, k=k)[0]

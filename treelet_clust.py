@@ -4,9 +4,6 @@ from clust import ClusterMethod
 from treelet import treelet
 
 
-
-
-
 class TreeletClustering(ClusterMethod):
 	def __init__ (self, kernel=False, number_of_clusters=0):
 		super().__init__(number_of_clusters)
@@ -57,4 +54,3 @@ class TreeletClustering(ClusterMethod):
 				if np.abs(dendrogram_list[i - 1] - dendrogram_list[i]) > 1:
 					self.number_of_clusters = len(self) - i
 					break
-

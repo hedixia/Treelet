@@ -1,6 +1,9 @@
 import numpy as np
+
+
 def default_psi (x, y, z):
 	return np.abs(x) / np.sqrt(np.abs(y * z))
+
 
 def jacobi_rotation (M, k, l, tol=0.00000000001):
 	"""

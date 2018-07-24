@@ -30,6 +30,5 @@ class ClusterMethod:
 			for j in self.clusters[i]:
 				self.labels[j] = i
 
-	def __len__(self):
+	def __len__ (self):
 		return self.n
-
