@@ -1,5 +1,6 @@
 import numpy as np
-
+def default_psi (x, y, z):
+	return np.abs(x) / np.sqrt(np.abs(y * z))
 
 def jacobi_rotation (M, k, l, tol=0.00000000001):
 	"""
@@ -30,35 +31,47 @@ def jacobi_rotation (M, k, l, tol=0.00000000001):
 	M[:, k] = temp1
 	M[:, l] = temp2
 
-	return (cos_val, sin_val)
+	return cos_val, sin_val
 
 
 class treelet:
-	def __init__ (self, A, psi):
-		self.A = np.matrix(A)
-		self.phi = lambda x, y:psi(self.A[x, y], self.A[x, x], self.A[y, y])
-		self.n = self.A.shape[0]
-		self.max_row = {i:0 for i in range(self.n)}
+	def __init__ (self, psi=False):
+		self.psi = psi if psi else default_psi
+		self.n = 0
+		self.X = None
+		self.phi = None
+		self.max_row = None
+		self.root = None
+		self.dfrk = None
+		self._tree = None
 		self.transform_list = []
 		self.dendrogram_list = []
 
 	# Treelet Tree
+	@property
 	def tree (self):
-		return [I[0:2] for I in self.transform_list]
+		if self._tree is None:
+			self._tree = [I[0:2] for I in self.transform_list]
+		else:
+			return self._tree
 
-	def fullrotate (self):
-		self.rotate(self.n - 1)
+	def fit (self, X):
+		self.X = np.matrix(X)
+		self.phi = lambda x, y: self.psi(self.X[x, y], self.X[x, x], self.X[y, y])
+		self.n = self.X.shape[0]
+		self.max_row = {i: 0 for i in range(self.n)}
+		self._rotate(self.n - 1)
 		self.root = list(self.max_row)[0]
 
-	def rotate (self, multi=False):
+	def _rotate (self, multi=False):
 		if multi:
 			for _ in range(multi):
-				self.rotate()
+				self._rotate()
 			self.dfrk = [self.transform_list[i][1] for i in range(self.n - 1)]
 			self.dfrk.append(self.transform_list[-1][0])
 		else:
 			(p, q) = self._find()
-			(cos_val, sin_val) = jacobi_rotation(self.A, p, q)
+			(cos_val, sin_val) = jacobi_rotation(self.X, p, q)
 			self._record(p, q, cos_val, sin_val)
 
 	def _find (self):
@@ -82,7 +95,7 @@ class treelet:
 		max_v = max(v)
 		i = k[v.index(max_v)]
 		self.dendrogram_list.append(np.log(max_v))
-		return (self.max_row[i], i)
+		return self.max_row[i], i
 
 	def _max (self, col_num):
 		temp_max_row = 0
@@ -98,10 +111,13 @@ class treelet:
 		self.max_row_val[col_num] = max_temp
 
 	def _record (self, l, k, cos_val, sin_val):
-		if self.A[l, l] < self.A[k, k]:
+		if self.X[l, l] < self.X[k, k]:
 			self.current = (k, l, cos_val, sin_val)
 		else:
 			self.current = (l, k, cos_val, sin_val)
 		self.transform_list.append(self.current)
 		del self.max_row[self.current[1]]
 		del self.max_row_val[self.current[1]]
+
+	def __len__ (self):
+		return self.n

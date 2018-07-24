@@ -1,27 +1,25 @@
 import numpy as np
-
+from scipy.sparse import coo_matrix
 from treelet import treelet
 
 
-class treelet_dimred:
+class treelet_dimred (treelet):
 	def __init__ (self, t=0):
+		super().__init__()
 		self.t = t
-		self.n = 0
+		self.psi = lambda x, y, z: abs(x) / np.sqrt(np.abs(y * z)) + abs(x) * self.t
 
-	def fit (self, dataset_ref):
-		self.dataset_ref = np.matrix(dataset_ref)
-		self.avedat = np.average(self.dataset_ref, axis=0)
-		self.cov = np.cov(self.dataset_ref.getT())
-		psi = lambda x, y, z:abs(x) / np.sqrt(np.abs(y * z)) + abs(x) * self.t
-		self.trl = treelet(self.cov, psi)
-		self.trl.fullrotate()
-		self.n = self.trl.n
-		self.transform_list = self.trl.transform_list
-		self.dfrk = self.trl.dfrk
+		self.mean_ = None
+		self.cov = None
+
+	def fit (self, X):
+		self.mean_ = np.average(self.X, axis=0)
+		self.cov = np.cov(self.X.getT())
+		super().fit(self.cov)
 
 	# Treelet Transform
 	def transform (self, v, k=False, epsilon=0):
-		v = np.matrix(v) - self.avedat
+		v = np.matrix(v) - self.mean_
 		k = k if k else 1
 		for iter in range(self.n - k):
 			(scv, cgs, cos_val, sin_val) = self.transform_list[iter]
@@ -32,10 +30,10 @@ class treelet_dimred:
 		if epsilon == 0:
 			return (v, None)
 		else:
-			scaling_part = np.concatenate([v[:, self.dfrk[i]] for i in range(k, cols)], axis=1)
+			scaling_part = np.concatenate([v[:, self.dfrk[i]] for i in range(k, self.n)], axis=1)
 			difference_part = np.concatenate([v[:, self.dfrk[i]] for i in range(k)], axis=1)
 			difference_mat = coo_matrix(abs(difference_part) > epsilon).multiply(difference_part)
-			return (scaling_part, difference_mat)
+			return scaling_part, difference_mat
 
 	def inverse_transform (self, scaling_part, difference_mat=False):
 		scaling_part = np.matrix(scaling_part)
@@ -54,7 +52,7 @@ class treelet_dimred:
 		if difference_mat:
 			for i in range(k):
 				v[:, self.dfrk[i]] += difference_mat[:, i]
-		return v + self.avedat
+		return v + self.mean_
 
 	def cluster (self, k):
 		returnL = list(range(self.n))
@@ -62,14 +60,7 @@ class treelet_dimred:
 			returnL[self.transform_list[i][1]] = returnL[self.transform_list[i][0]]
 		return returnL
 
-	@property
-	def mean_ (self):
-		return self.avedat
-
-	def __len__ (self):
-		return self.n
+	def components_ (self, k):
+		return self.transform(np.identity(self.n) + self.mean_, k=k)[0]
 
 	__call__ = transform
-
-	def components_ (self, k):
-		return self.transform(np.identity(self.n) + self.avedat, k=k)[0]

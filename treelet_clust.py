@@ -1,40 +1,42 @@
 import numpy as np
 
-from clust import clust
+from clust import ClusterMethod
 from treelet import treelet
 
 
-class treelet_clust(clust):
-	def __init__ (self, dataset_ref, kernel, slice=False, num_clust=1, all_kernel=False):
-		super().__init__(dataset_ref, slice)
-		self.kernel = kernel
 
-		if num_clust is 0: #Auto-find clust num
-			self.num_clust = 1
+
+
+class TreeletClustering(ClusterMethod):
+	def __init__ (self, kernel=False, number_of_clusters=0):
+		super().__init__(number_of_clusters)
+		self.kernel = kernel if kernel else np.inner
+
+		if number_of_clusters is 0:  # Auto-find clust num
+			self.number_of_clusters = 1
 			self.clustnum_estimate = True
 		else:
-			self.num_clust = num_clust
+			self.number_of_clusters = number_of_clusters
 			self.clustnum_estimate = False
 
-		if all_kernel:
-			temp_slice = np.array(self.slice, dtype=np.intp)
-			self.A = all_kernel[temp_slice[:, np.newaxis], temp_slice]
-		else:
-			temp_f = lambda i,j : self.kernel(self.dataset_ref[i], self.dataset_ref[j])
-			self.A = np.vectorize(temp_f)(*np.meshgrid(self.slice, self.slice, sparse=True))
+		self.tree = None
 
-	def build (self):
-		if self.size is 0:
+	def fit (self, X):
+		super().fit(X)
+		Xlist = self.X.tolist()
+		kerf = lambda r_i, r_j: self.kernel(Xlist[r_i], Xlist[r_j])
+		self.C = np.vectorize(kerf)(*np.meshgrid(range(self.n), range(self.n), sparse=True))
+		if len(self) is 0:
 			raise ValueError
-		trl = treelet(self.A, self.psi)
-		trl.fullrotate()
-		self.cltree = trl.tree()
+		trl = treelet(psi)
+		trl.fit(self.C)
+		self.tree = trl.tree
 		if self.clustnum_estimate:
 			self.find_clust_num(trl.dendrogram_list)
-		temp_labels = list(range(self.size))
-		for i in range(self.size - self.num_clust):
-			temp_labels[self.cltree[i][1]] = self.cltree[i][0]
-		for i in range(self.size):
+		temp_labels = list(range(self.n))
+		for i in range(self.n - self.number_of_clusters):
+			temp_labels[self.tree[i][1]] = self.tree[i][0]
+		for i in range(self.n):
 			current = i
 			while current != temp_labels[current]:
 				current = temp_labels[current]
@@ -43,27 +45,16 @@ class treelet_clust(clust):
 			while current != ending:
 				temp_labels[current] = ending
 				current = temp_labels[current]
-		self.labels = dict(zip(self.slice, temp_labels))
-		self.temp_labels = temp_labels
+		self.labels = temp_labels
 		self._l2c()
 
-	def assign (self, data):
-		linkf = lambda x:self.kernel(self.dataset_ref[x], data)
-		closest = max(self.slice, key=linkf)
-		return self.labels[closest]
-
 	def find_clust_num (self, dendrogram_list):
-		#find the first gap with 1
-		for i in range(len(self)-1):
+		# find the first gap with 1
+		for i in range(len(self) - 1):
 			if i is 0:
 				continue
 			else:
-				if np.abs(dendrogram_list[i-1] - dendrogram_list[i]) > 1:
-					self.num_clust = len(self) - i
+				if np.abs(dendrogram_list[i - 1] - dendrogram_list[i]) > 1:
+					self.number_of_clusters = len(self) - i
 					break
 
-"""
-tc = treelet_clust(dat, ker, slice, num_clust)
-tc.build()
-tc.get()
-"""
