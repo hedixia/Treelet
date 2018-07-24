@@ -14,8 +14,8 @@ class treelet_dimred(treelet):
 		self.cov = None
 
 	def fit (self, X):
-		self.mean_ = np.average(self.X, axis=0)
-		self.cov = np.cov(self.X.getT())
+		self.mean_ = np.mean(X, axis=0)
+		self.cov = np.cov(X.getT())
 		super().fit(self.cov)
 
 	# Treelet Transform
