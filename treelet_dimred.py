@@ -32,8 +32,8 @@ class treelet_dimred(treelet):
 		if epsilon == 0:
 			return v, None
 		else:
-			scaling_part = np.concatenate([v[:, self.dfrk[i]] for i in range(k, self.n)], axis=1)
-			difference_part = np.concatenate([v[:, self.dfrk[i]] for i in range(k)], axis=1)
+			scaling_part = np.concatenate([v[:, self.dfrk[i]] for i in range(self.n - k, self.n)], axis=1)
+			difference_part = np.concatenate([v[:, self.dfrk[i]] for i in range(self.n - k)], axis=1)
 			difference_mat = coo_matrix(abs(difference_part) > epsilon).multiply(difference_part)
 			return scaling_part, difference_mat
 
@@ -42,7 +42,7 @@ class treelet_dimred(treelet):
 		k = self.n - scaling_part.shape[1]
 		v = np.matrix(np.zeros((scaling_part.shape[0], self.n)))
 		for i in range(k, self.n):
-			v[:, self.dfrk[i]] = scaling_part[:, i]
+			v[:, self.dfrk[i]] = scaling_part[:, i - k]
 		for iter in reversed(self.transform_list):
 			(scv, cgs, cos_val, sin_val) = iter
 			temp_scv = cos_val * v[:, scv] + sin_val * v[:, cgs]

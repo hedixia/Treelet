@@ -47,6 +47,7 @@ class treelet:
 		self.root = None
 		self.dfrk = None
 		self._tree = None
+		self._layer = None
 		self.transform_list = []
 		self.dendrogram_list = []
 
@@ -55,8 +56,15 @@ class treelet:
 	def tree (self):
 		if self._tree is None:
 			self._tree = [I[0:2] for I in self.transform_list]
-		else:
-			return self._tree
+		return self._tree
+
+	@property
+	def layer (self):
+		if self._layer is None:
+			self._layer = [1] * self.n
+			for merging in self.tree:
+				self._layer[merging[0]] += self._layer[merging[1]]
+		return self._layer
 
 	def fit (self, X):
 		self.X = np.matrix(X)
